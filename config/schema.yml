@@ -1,0 +1,43 @@
+propel:
+  _attributes:         { package: plugins.lxOAuthPlugin.lib.model }
+
+  # Table holding consumer key/secret combos an user issued to consumers.
+  # Used for verification of incoming requests.
+  oauth_server_consumer:
+    _attributes:       { phpName: OAuthServerConsumer }
+    id:                ~
+    name:              { type: varchar, size: 255 }
+    consumer_key:      { type: varchar, size: 255 }
+    consumer_secret:   { type: varchar, size: 255 }
+    uri:               { type: varchar, size: 255 }
+    status:            { type: integer }
+    expire:            { type: timestamp, notnull: true }
+    o_auth_version:    { type: integer }
+    created_at:        ~
+    updated_at:        ~
+
+
+  oauth_server_token:
+    _attributes:       { phpName: OAuthServerToken }
+    id:                ~
+    consumer_id:       { type: integer, foreignTable: oauth_server_consumer, foreignReference: id, onDelete: cascade }
+    user_id:           { type: integer }
+    type:              { type: varchar, size: 64 }
+    status:            { type: integer }
+    token:             { type: varchar, size: 255 }
+    token_secret:      { type: varchar, size: 255 }
+    description:       { type: varchar, size: 255 }
+    callback_url:      { type: varchar, size: 500 }
+    expire:            { type: timestamp, notnull: true }
+    o_auth_version:    { type: integer }
+    created_at:        ~
+    updated_at:        ~
+
+  oauth_server_nonce:
+    _attributes:       { phpName: OAuthServerNonce }
+    id:                ~
+    consumer_id:       { type: integer, foreignTable: oauth_server_consumer, foreignReference: id, onDelete: cascade }
+    nonce:             { type: varchar, size: 255 }
+    token:             { type: varchar, size: 255 }
+    created_at:        ~
+    updated_at:        ~

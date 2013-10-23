@@ -1,0 +1,23 @@
+OAuthServer_requestToken:
+  url:    /oauth/request_token
+  param:  { module: OAuthServer, action: requestToken }
+
+OAuthServer_authenticate:
+  url:    /oauth/authenticate
+  param:  { module: OAuthServer, action: authenticate }
+
+OAuthServer_authorize:
+  url:    /oauth/authorize
+  param:  { module: OAuthServer, action: authorize }
+
+OAuthServer_accessToken:
+  url:    /oauth/access_token
+  param:  { module: OAuthServer, action: accessToken }
+
+OAuthServer_revoke:
+  url:    /oauth/revoke
+  param:  { module: OAuthServer, action: revoke }
+
+OAuthServer_testCall:
+  url:    /oauth/test
+  param:  { module: OAuthServer, action: testCall }

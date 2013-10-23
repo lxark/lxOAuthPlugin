@@ -1,0 +1,10 @@
+all:
+  oauth:
+    token_expiration_time: +4 hours # strtotime / can be overridden
+
+    token_key_length: 22
+
+    # Not necessary
+    #token_secret_length: 40
+
+    verifier_length: 10

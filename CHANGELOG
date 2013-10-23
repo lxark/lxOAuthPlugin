@@ -1,0 +1,35 @@
+* 1.1
+ * make consumer active/inactive and expirable
+ * make token expiration times, keys and secrets length configurable
+
+* 1.0
+ * add revoke action
+ * make routing file as a sample file, it is just an example
+ * make token expiration time expirable
+
+* 0.9
+ * re-enable signature time leaking check in oauth library
+
+* 0.8
+ * use sfFilter to add X-Xrds-Location http header and check request oauth parameters
+
+* 0.7
+ * manage nonces
+
+* 0.6
+ * move models to plugins
+
+* 0.5
+ * add OAuthServer module and routing
+
+* 0.4
+ * add schema.yml
+
+* 0.3
+ * add lxOAuthDataStore class which is an implementation of OAuthDataStore "interface"
+
+* 0.2
+ * disable signature time leaking check in oauth library
+
+* 0.1
+ * imported library Oauth from https://code.google.com/p/oauth/
