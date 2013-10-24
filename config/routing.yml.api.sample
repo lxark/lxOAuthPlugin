@@ -1,0 +1,15 @@
+# API
+default_symfony:
+  url:   /symfony/:action/*
+  param: { module: default }
+
+link_post:
+  url:   /posts/:id
+  param: { module: posts, action: index }
+
+default_index:
+  url:   /:module
+  param: { action: index }
+
+default:
+  url:   /:module/:action/*
