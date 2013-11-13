@@ -9,15 +9,45 @@
  */
 abstract class OAuthApiActions extends BaseOAuthActions
 {
-    // Need to be implemented to list items
-    protected $objectPrimaryKey;
-    protected $peerClass;
-    protected $peerMethod = 'doSelect';
+    /**
+     * Need to be implemented via module.yml
+     * @var string $model model name
+     *
+     */
+    protected $model;
 
-    protected $listLimit = 20;
+    /**
+     * Need to be implemented via module.yml
+     * @var string $modelPK model name primary key
+     */
+    protected $modelPK;
+
+    /**
+     * @var string peer class of the model
+     */
+    protected $peerClass;
+
+    /**
+     * @var sfPropelPager $pager Pagination
+     */
+    protected $pager;
+
+    /**
+     * Pre Execute
+     * Parse module.yml
+     *
+     * @return void
+     */
+    public function preExecute()
+    {
+        $this->model     = sfConfig::get('mod_'.$this->getModuleName().'_model');
+        $this->modelPK   = sfConfig::get('mod_'.$this->getModuleName().'_model_pk');
+        $this->peerClass = $this->model.'Peer';
+    }
 
     /**
      * Post Execute
+     * Change content type header
      *
      * @return void
      */
@@ -43,59 +73,6 @@ abstract class OAuthApiActions extends BaseOAuthActions
                 $this->getResponse()->setContentType('application/json');
                 break;
         }
-    }
-
-    /**
-     * Return list of resources
-     *
-     * @return Traversable
-     */
-    protected function getCollection()
-    {
-        // execute query with the criteria
-        $c = $this->getCriteria($this->getRequest());
-
-        return call_user_func_array(array($this->peerClass, $this->peerMethod), array($c));
-    }
-
-
-    /**
-     * Create criteria depending on filters in request
-     *
-     * @param sfRequest $request
-     *
-     * @return Criteria
-     */
-    protected function getCriteria(sfRequest $request)
-    {
-        // Check filters in query
-        $fieldNames   = call_user_func_array(array($this->peerClass, 'getFieldNames'), array(BasePeer::TYPE_FIELDNAME));
-        $dbFieldNames = call_user_func_array(array($this->peerClass, 'getFieldNames'), array(BasePeer::TYPE_COLNAME));
-
-        $filters = array_intersect_key(
-            $request->getParameterHolder()->getAll(),
-            array_flip($fieldNames));
-
-        // Force "id" parameter as primary_key if primary key is not already in filter
-        if ($request->getParameter('id') && !isset($filters[$this->objectPrimaryKey]))
-        {
-            $filters[$this->objectPrimaryKey] = $request->getParameter('id');
-        }
-
-        // Create query depending on filters
-        $c = new Criteria();
-        $c->setLimit($this->listLimit);
-        $c->setOffset(($request->getParameter('page', 1) - 1) * $this->listLimit);
-
-        foreach ($filters as $filter => $value)
-        {
-            $keyFieldName = array_search($filter, $fieldNames);
-            $dbFieldName  = $dbFieldNames[$keyFieldName];
-
-            $c->add($dbFieldName, $value);
-        }
-
-        return $c;
     }
 
     /**
@@ -129,17 +106,101 @@ abstract class OAuthApiActions extends BaseOAuthActions
         return $encoder;
     }
 
+
+    /**
+     * Create criteria depending on filters in request
+     *
+     * @param sfRequest $request
+     *
+     * @return Criteria
+     */
+    protected function getCriteria(sfRequest $request)
+    {
+        // Check filters in query
+        $fieldNames   = call_user_func_array(array($this->peerClass, 'getFieldNames'), array(BasePeer::TYPE_FIELDNAME));
+        $dbFieldNames = call_user_func_array(array($this->peerClass, 'getFieldNames'), array(BasePeer::TYPE_COLNAME));
+
+        $filters = array_intersect_key(
+            $request->getParameterHolder()->getAll(),
+            array_flip($fieldNames));
+
+        // Force "id" parameter as primary_key if primary key is not already in filter
+        if ($request->getParameter('id') && !isset($filters[$this->modelPK]))
+        {
+            $filters[$this->modelPK] = $request->getParameter('id');
+        }
+
+        // Create query depending on filters
+        $c = new Criteria();
+        foreach ($filters as $filter => $value)
+        {
+            $keyFieldName = array_search($filter, $fieldNames);
+            if (is_int($keyFieldName))
+            {
+                $dbFieldName = $dbFieldNames[$keyFieldName];
+                $c->add($dbFieldName, $value);
+            }
+        }
+
+        return $c;
+    }
+
+    /**
+     * Get limit for query
+     *
+     * @param sfRequest $request
+     *
+     * @return int
+     */
+    protected function getMaxLimit(sfRequest $request)
+    {
+        // Limit, limit the limit
+        $maxLimit = sfConfig::get('app_list_limit', sfConfig::get('mod_'.$this->getModuleName().'_list_limit', 100));
+        $limit    = $request->getParameter('limit', $maxLimit);
+        if ($limit > $maxLimit)
+        {
+            $limit = $maxLimit;
+        }
+
+        return $limit;
+    }
+
+    /**
+     * Return list of resources as pager
+     *
+     * @param sfRequest $request
+     *
+     * @return sfPropelPager
+     */
+    protected function getPager(sfRequest $request)
+    {
+        if (null === $this->pager)
+        {
+            $this->pager = new sfPropelPager($this->model, $this->getMaxLimit($request));
+            $this->pager->setPeerMethod(sfConfig::get('mod_'.$this->getModuleName().'_list_peer_method', 'doSelect'));
+            $this->pager->setPeerCountMethod(sfConfig::get('mod_'.$this->getModuleName().'_list_peer_count_method', 'doCount'));
+            $this->pager->setCriteria($this->getCriteria($request));
+            $this->pager->setPage($request->getParameter('page', 1));
+            $this->pager->init();
+        }
+
+        return $this->pager;
+    }
+
     /**
      * Return a dumped collection
      *
-     * @return Traversable
+     * @param sfRequest $request
+     *
+     * @return array
      */
-    protected function getDumpedCollection()
+    protected function getDumpedCollection(sfRequest $request)
     {
-        $collection = $this->getCollection();
-        $dumper     = $this->getDumper();
-
+        $dumper           = $this->getDumper();
+        $pager            = $this->getPager($request);
+        $collection       = $pager->getResults();
         $dumpedCollection = array();
+
         foreach($collection as $item)
         {
             $dumpedCollection[] = $dumper->dump($item);
@@ -149,22 +210,25 @@ abstract class OAuthApiActions extends BaseOAuthActions
     }
 
     /**
-     * Return an encoded collection
+     * Return pagination data
      *
-     * @param string $format encoding format
+     * @param sfRequest $request
      *
-     * @return mixed
+     * @return array
      */
-    protected function getEncodedCollection($format)
+    protected function getPaginationData(sfRequest $request)
     {
-        $encoder    = $this->getEncoder($format);
-        $collection = $this->getDumpedCollection();
-
-        return $encoder->encode($collection);
+        $pager = $this->getPager($request);
+        return array(
+            'total'        => $pager->getNbResults(),
+            'nb_items'     => (int) $pager->getMaxPerPage(),
+            'current_page' => $pager->getPage(),
+            'last_page'    => $pager->getLastPage(),
+        );
     }
 
     /**
-     * Return list of Piece
+     * Return list of objects
      *
      * @return string
      */
@@ -174,14 +238,24 @@ abstract class OAuthApiActions extends BaseOAuthActions
     }
 
     /**
-     * Return list of Piece
+     * Return list of objects
+     * criteria -> paginate -> dump -> encode
      *
      * @return string
      */
     public function executeList()
     {
-        $collection = $this->getEncodedCollection($this->getRequestParameter('sf_format', 'json'));
+        // Decoded data
+        $request = $this->getRequest();
+        $data    = array(
+            'data'       => $this->getDumpedCollection($request),
+            'pagination' => $this->getPaginationData($request),
+        );
 
-        return $this->renderText($collection);
+        // Encoded data
+        $encoder = $this->getEncoder($request->getParameter('sf_format', 'json'));
+        $data    = $encoder->encode($data);
+
+        return $this->renderText($data);
     }
 }
